@@ -37,8 +37,9 @@ class JointMeasurement:
                 - unit: 単位 (cm, mm, etc.)
                 - scale_factor: スケール変換係数
         """
-        # TODO: 実装をここに追加
-        pass
+        self.landmarks_to_measure = config.get("landmarks_to_measure", [])
+        self.scale_factor = config.get("scale_factor", 1.0)
+        self.unit = config.get("unit", "cm")
 
     def calculate_distances(self, landmarks: List[List[float]]) -> Dict:
         """
@@ -57,8 +58,51 @@ class JointMeasurement:
                     }
                 }
         """
-        # TODO: 実装をここに追加
-        pass
+        measurements = {}
+
+        for pair in self.landmarks_to_measure:
+            idx1, idx2 = pair
+            point1 = landmarks[idx1]
+            point2 = landmarks[idx2]
+
+            # 距離計算
+            distance = self._euclidean_distance(point1, point2)
+
+            # スケール変換（ピクセル → cm）
+            distance_scaled = distance * self.scale_factor
+
+            # 関節名を決定
+            name = self._get_joint_name(idx1, idx2)
+            measurements[name] = {
+                "distance": round(distance_scaled, 2),
+                "unit": self.unit
+            }
+
+        return {"measurements": measurements}
+
+    def _get_joint_name(self, idx1: int, idx2: int) -> str:
+        """
+        ランドマークインデックスから関節名を生成
+
+        Args:
+            idx1 (int): 最初のランドマークインデックス
+            idx2 (int): 2番目のランドマークインデックス
+
+        Returns:
+            str: 関節名（例: "wrist_to_thumb"）
+        """
+        landmark_names = {
+            0: "wrist",
+            4: "thumb",
+            8: "index",
+            12: "middle",
+            16: "ring",
+            20: "pinky"
+        }
+
+        name1 = landmark_names.get(idx1, f"landmark_{idx1}")
+        name2 = landmark_names.get(idx2, f"landmark_{idx2}")
+        return f"{name1}_to_{name2}"
 
     def _euclidean_distance(self, point1: List[float], point2: List[float]) -> float:
         """
@@ -71,8 +115,7 @@ class JointMeasurement:
         Returns:
             float: ユークリッド距離
         """
-        # TODO: 実装をここに追加
-        pass
+        return np.linalg.norm(np.array(point1) - np.array(point2))
 
     def normalize_data(self, data: Dict) -> Dict:
         """
@@ -84,8 +127,18 @@ class JointMeasurement:
         Returns:
             Dict: 正規化されたデータ
         """
-        # TODO: 実装をここに追加
-        pass
+        # 異常値のフィルタリング（距離が負の値や極端に大きい値をチェック）
+        normalized = {"measurements": {}}
+
+        if "measurements" in data:
+            for joint_name, measurement in data["measurements"].items():
+                distance = measurement.get("distance", 0)
+
+                # 異常値チェック（0 < distance < 1000 cm）
+                if 0 < distance < 1000:
+                    normalized["measurements"][joint_name] = measurement
+
+        return normalized
 
     def format_output(self, hand_id: int, measurements: Dict) -> Dict:
         """
@@ -103,8 +156,11 @@ class JointMeasurement:
                     "timestamp": str
                 }
         """
-        # TODO: 実装をここに追加
-        pass
+        return {
+            "hand_id": hand_id,
+            "measurements": measurements.get("measurements", {}),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 # テスト用のメイン関数
