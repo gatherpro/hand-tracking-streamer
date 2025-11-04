@@ -43,8 +43,13 @@ class DataSender:
                 - retry_attempts: リトライ回数
                 - retry_delay: リトライ間隔（秒）
         """
-        # TODO: 実装をここに追加
-        pass
+        self.endpoint = config.get("endpoint", "http://localhost:8000/api/hand-data")
+        self.method = config.get("method", "POST")
+        self.websocket_url = config.get("websocket_url", "ws://localhost:8000/ws/hand-data")
+        self.retry_attempts = config.get("retry_attempts", 3)
+        self.retry_delay = config.get("retry_delay", 1.0)
+        self.connected = False
+        self.timeout = 5
 
     def connect(self) -> bool:
         """
@@ -53,8 +58,16 @@ class DataSender:
         Returns:
             bool: 接続成功でTrue
         """
-        # TODO: 実装をここに追加
-        pass
+        try:
+            # エンドポイントにhealth checkを送信
+            health_endpoint = self.endpoint.replace("/hand-data", "/health")
+            response = requests.get(health_endpoint, timeout=self.timeout)
+            self.connected = response.status_code == 200
+            return self.connected
+        except Exception as e:
+            print(f"Connection failed: {e}")
+            self.connected = False
+            return False
 
     def send_data(self, data: Dict) -> bool:
         """
@@ -73,8 +86,7 @@ class DataSender:
         Returns:
             bool: 送信成功でTrue
         """
-        # TODO: 実装をここに追加
-        pass
+        return self._send_with_retry(data)
 
     def _send_with_retry(self, data: Dict) -> bool:
         """
@@ -86,15 +98,34 @@ class DataSender:
         Returns:
             bool: 送信成功でTrue
         """
-        # TODO: 実装をここに追加
-        pass
+        for attempt in range(self.retry_attempts):
+            try:
+                response = requests.post(
+                    self.endpoint,
+                    json=data,
+                    headers={"Content-Type": "application/json"},
+                    timeout=self.timeout
+                )
+
+                if response.status_code == 200:
+                    return True
+                else:
+                    print(f"Send failed with status {response.status_code} (attempt {attempt+1}/{self.retry_attempts})")
+
+            except Exception as e:
+                print(f"Send failed (attempt {attempt+1}/{self.retry_attempts}): {e}")
+
+            if attempt < self.retry_attempts - 1:
+                time.sleep(self.retry_delay)
+
+        return False
 
     def disconnect(self):
         """
         接続を終了
         """
-        # TODO: 実装をここに追加
-        pass
+        self.connected = False
+        print("Disconnected from server")
 
     def is_connected(self) -> bool:
         """
@@ -103,8 +134,7 @@ class DataSender:
         Returns:
             bool: 接続中の場合True
         """
-        # TODO: 実装をここに追加
-        pass
+        return self.connected
 
 
 # テスト用のメイン関数
