@@ -1,0 +1,37 @@
+# Hand Tracking Streamer Configuration
+
+camera:
+  device_id: 0  # Default camera
+  width: 1280
+  height: 720
+  fps: 30
+
+hand_detection:
+  model_complexity: 1  # 0=Lite, 1=Full, 2=Heavy
+  min_detection_confidence: 0.5
+  min_tracking_confidence: 0.5
+  max_num_hands: 2
+
+measurement:
+  # Hand landmark indices for measurement
+  # 0=Wrist, 4=Thumb tip, 8=Index tip, 12=Middle tip, 16=Ring tip, 20=Pinky tip
+  landmarks_to_measure:
+    - [0, 4]   # Wrist to thumb
+    - [0, 8]   # Wrist to index
+    - [0, 12]  # Wrist to middle
+    - [0, 16]  # Wrist to ring
+    - [0, 20]  # Wrist to pinky
+  unit: "cm"  # Unit for measurements
+  scale_factor: 10.0  # Conversion factor (adjust based on calibration)
+
+data_sender:
+  endpoint: "http://localhost:8000/api/hand-data"
+  method: "POST"  # or "WEBSOCKET"
+  websocket_url: "ws://localhost:8000/ws/hand-data"
+  retry_attempts: 3
+  retry_delay: 1.0  # seconds
+
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"
+  file: "hand_tracker.log"
