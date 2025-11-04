@@ -40,8 +40,19 @@ class HandDetector:
                 - min_tracking_confidence: トラッキング信頼度閾値
                 - max_num_hands: 最大検出手数
         """
-        # TODO: 実装をここに追加
-        pass
+        self.config = config
+        self.mp_hands = mp.solutions.hands
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+
+        # MediaPipe Handsの初期化
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            model_complexity=config.get("model_complexity", 1),
+            min_detection_confidence=config.get("min_detection_confidence", 0.5),
+            min_tracking_confidence=config.get("min_tracking_confidence", 0.5),
+            max_num_hands=config.get("max_num_hands", 2)
+        )
 
     def detect(self, frame: np.ndarray) -> Dict:
         """
@@ -64,8 +75,41 @@ class HandDetector:
                     "timestamp": str
                 }
         """
-        # TODO: 実装をここに追加
-        pass
+        # RGB変換（MediaPipeはRGBを期待）
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # 手を検出
+        results = self.hands.process(rgb_frame)
+
+        # 結果を整形
+        hand_count = self.get_hand_count(results)
+        hands_data = []
+
+        if results.multi_hand_landmarks and results.multi_handedness:
+            for hand_landmarks, handedness in zip(
+                results.multi_hand_landmarks, results.multi_handedness
+            ):
+                # 手のラベル（Left/Right）を取得
+                label = handedness.classification[0].label
+                confidence = handedness.classification[0].score
+
+                # ランドマークを[[x, y, z], ...]の形式で抽出
+                landmarks = [
+                    [landmark.x, landmark.y, landmark.z]
+                    for landmark in hand_landmarks.landmark
+                ]
+
+                hands_data.append({
+                    "label": label,
+                    "landmarks": landmarks,
+                    "confidence": confidence
+                })
+
+        return {
+            "hand_count": hand_count,
+            "hands": hands_data,
+            "timestamp": datetime.now().isoformat()
+        }
 
     def draw_landmarks(self, frame: np.ndarray, landmarks) -> np.ndarray:
         """
@@ -78,8 +122,19 @@ class HandDetector:
         Returns:
             np.ndarray: ランドマークが描画されたフレーム
         """
-        # TODO: 実装をここに追加
-        pass
+        # フレームのコピーを作成（元のフレームを変更しない）
+        annotated_frame = frame.copy()
+
+        # ランドマークを描画
+        self.mp_drawing.draw_landmarks(
+            annotated_frame,
+            landmarks,
+            self.mp_hands.HAND_CONNECTIONS,
+            self.mp_drawing_styles.get_default_hand_landmarks_style(),
+            self.mp_drawing_styles.get_default_hand_connections_style()
+        )
+
+        return annotated_frame
 
     def get_hand_count(self, results) -> int:
         """
@@ -91,8 +146,9 @@ class HandDetector:
         Returns:
             int: 検出された手の数
         """
-        # TODO: 実装をここに追加
-        pass
+        if results.multi_hand_landmarks:
+            return len(results.multi_hand_landmarks)
+        return 0
 
 
 # テスト用のメイン関数
